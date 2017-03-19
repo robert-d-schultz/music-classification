@@ -1,6 +1,9 @@
 # other
+data_raw/
 data/
-test.mid
+*.p
+*.mid
+*.kar
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
