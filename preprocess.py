@@ -4,35 +4,27 @@ import operator
 import sys
 
 def preprocess(pat):
-    # extract key signature
-    key_sig = [event.data for event in pat[0] if isinstance(event, midi.KeySignatureEvent)]
-    key_sig = key_sig[0]
 
     # make ticks absolute instead of relative
     pat.make_ticks_abs()
 
     # extract only timing and note data
-    tracks = [[(event.tick, event.data) for event in track if isinstance(event, midi.NoteOnEvent)] for track in pat]
-
-    # concatenate tracks
-    new_list = []
-    for i in tracks:
-        new_list.extend(i)
+    event_list = []
+    for track in pat:
+        for event in track:
+            if isinstance(event, midi.NoteOnEvent):
+                if event.data[1] > 0:
+                    event_list.append((event.tick, [event.data[0], 127]))
+                else:
+                    event_list.append((event.tick, event.data))
+            elif isinstance(event, midi.NoteOffEvent):
+                event_list.append((event.tick, [event.data[0], 0]))
 
     # sort events
-    sort = sorted(new_list)
-
-    # change all non-zero "powered" notes to the max (127)
-    flat = []
-    for x in sort:
-        if x[1][1] > 0:
-            flat.append((x[0], [x[1][0], 127]))
-        else:
-            flat.append(x)
-
+    sort = sorted(event_list)
 
     # merge events by timing
-    mrg = merge(flat)
+    mrg = merge(sort)
 
     # carry over active notes to the next event
     carried_over = carry_over(mrg)
@@ -46,17 +38,67 @@ def preprocess(pat):
     # keep unique only - assumes chords are sets of notes
     uniq = [(event[0], unique(event[1])) for event in no_oct]
 
-    '''# get scale
-    scale = get_scale(key_sig)
+    # extract key signature
+    key_sig = []
+    for channel in pat:
+        key_sig.extend([event.data for event in channel if isinstance(event, midi.KeySignatureEvent)])
+
+    # get scale
+    scale = []
+    if len(key_sig) == 0:
+        notes = [event[1][0] for event in event_list if event[1][1] == 127]
+        scale = find_scale(notes)
+    elif len(key_sig) > 0:
+        if len(key_sig) == 1:
+            key_sig = key_sig[0]
+        else:
+            if key_sig.count(key_sig[0]) == len(key_sig):
+                key_sig = key_sig[0]
+            else:
+                # fuck it, just use the first one
+                key_sig = key_sig[0]
+                # raise ValueError('One of the files has two or more different key signatures and must be analyzed in multiple parts. Please let this not fire.')
+
+        # if the key signature's first byte is greater than 7 then it should be negative negative
+        if key_sig[0] > 7:
+            key_sig = [key_sig[0] - 256, key_sig[1]]
+
+        scale = get_scale(key_sig)
 
     # get named chords for that scale
     named_chords = get_named_chords(scale)
 
     # for each chord, find the nearest named chord
     # list of (time, chord name), chord name gives the "place" in the scale and the chord
-    final = [(chord[0], find_closest_named_chord(chord[1], named_chords)) for chord in uniq]'''
+    final = [(chord[0], find_closest_named_chord(chord[1], named_chords)) for chord in uniq]
 
-    return uniq
+    return final
+
+# find the scale based on distribution of notes
+def find_scale(notes):
+    # note distribution
+    dist = []
+    for i in range(11):
+        dist.append(notes.count(i))
+
+    # make a list of all scales
+    scales = []
+    for k in [0,1]:
+        for j in range(-7,7):
+            if k == 0:
+                scales.append([(n - j * 5) % 12 for n in [0,2,4,5,7,9,11]])
+            else:
+                scales.append([(n - j * 5) % 12 for n in [9,11,0,2,4,6,8]])
+
+    # find out-of-scale rate for each scale
+    out_of_scale = [0] * len(scales)
+    for l in range(len(scales)):
+        for m in range(11):
+            if m not in scales[l]:
+                out_of_scale[l] += dist[m]
+
+    # pick minimum
+    return scales[out_of_scale.index(min(out_of_scale))]
 
 # given a (sorted) list of (tick, note_data), combine into  a list of (tick, [note_data])'s
 def merge(event_list):
@@ -70,7 +112,6 @@ def merge(event_list):
         else:
             out.append((event_list[i][0], [event_list[i][1]]))
     return out
-
 
 # given that merged list, move all notes up a timestamp until they are "annihilated"
 def carry_over(some_list):
@@ -188,27 +229,27 @@ def chord_distance(chord1, chord2):
     return chord_distance_iter(list(diff1), list(diff2))
 
 def chord_distance_iter(chord1, chord2):
-    paths = []
-
-    # if the two chords are different lengths, only allow deleting
+    # deleting
+    delete_paths = []
+    delete_cost = []
     if (len(chord1) > len(chord2)):
-        paths = [delete(k, chord1, chord2) for k in range(0, len(chord1))]
-
-    # otherwise only allow incrementing
+        delete_paths = itertools.combinations(chord1, len(chord2))
+        delete_cost = (len(chord1) - len(chord2)) * 3
     else:
+        delete_paths = [chord1]
+        delete_cost = 0
+
+    # incrementing
+    path_cost = []
+    for path in delete_paths:
         # this part deals with the subtracting and adding stuff
         # should be pretty fast as long as chords are less than like 6 notes
-        perms = itertools.permutations(chord1)
+        perms = itertools.permutations(path)
         for x in perms:
             m = []
-            for i in range(0,len(x)):
+            for i in range(len(x)):
                 m += [min((x[i] - chord2[i]) % 12, (chord2[i] - x[i]) % 12)]
-            paths += [sum(m)]
+            path_cost += [sum(m) + delete_cost]
 
-    best_path = min(paths)
+    best_path = min(path_cost)
     return best_path
-
-def delete(j, chord1, chord2):
-    new_chord = chord1[:j] +  chord1[(j+1):]
-    d = chord_distance_iter(new_chord, chord2)
-    return d + 3
