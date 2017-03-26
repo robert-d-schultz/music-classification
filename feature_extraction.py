@@ -6,6 +6,7 @@ import operator
 import collections
 import numpy
 
+
 def bag_of_ngrams(n, m):
 
 	song_chord_counts = []
@@ -14,7 +15,7 @@ def bag_of_ngrams(n, m):
 
 	# build file list
 	filenames = []
-	for genre in ['classical', 'past_decade']:
+	for genre in ['classical', 'past_century']:
 		filenames.extend(glob.glob(os.path.join('./preprocess_pickle/' + genre + '/', '*.p')))
 
 	for filename in filenames:
@@ -49,14 +50,16 @@ def bag_of_ngrams(n, m):
 
 	return out
 
+
 def avg_interval():
 
 	# build file list
 	filenames = []
-	for genre in ['classical', 'past_decade']:
+	for genre in ['classical', 'past_century']:
 		filenames.extend(glob.glob(os.path.join('./preprocess_pickle/' + genre + '/', '*.p')))
 
-	out = []
+	avgs = []
+	stdevs = []
 	for filename in filenames:
 		# open pickled array
 		data = pickle.load(open(filename, "rb" ))
@@ -66,22 +69,25 @@ def avg_interval():
 		for i in range(1,len(data)):
 			intervals.append(data[i][0] - data[i-1][0])
 
-		out.append(float(sum(intervals)) / len(intervals))
+		avg = numpy.mean(intervals, dtype=numpy.float32)
+		avgs.append(avg)
+		stdev = numpy.std(intervals, dtype=numpy.float32)
+		stdevs.append(stdev)
 
-	return [out]
+	return [avgs, stdevs]
 
 
 def extract_feature(feature):
 	out = []
 	# unigrams
 	if feature == "unigram":
-		out = bag_of_ngrams(1, 10)
+		out = bag_of_ngrams(1, 119)
 	# bigrams
 	elif feature == "bigram":
-		out = bag_of_ngrams(2, 25)
+		out = bag_of_ngrams(2, 100)
 	# trigrams
 	elif feature == "trigram":
-		out = bag_of_ngrams(3, 50)
+		out = bag_of_ngrams(3, 500)
 	# interval
 	elif feature == "interval":
 		out = avg_interval()

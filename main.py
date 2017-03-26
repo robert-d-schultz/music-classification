@@ -4,17 +4,19 @@ import midi
 import os
 import glob
 import cPickle as pickle
-from sklearn.model_selection import cross_val_score
+from sklearn.cross_validation import KFold
+from sklearn.metrics import confusion_matrix, accuracy_score, f1_score
 from sklearn import svm
 import itertools
 import operator
+import numpy
 
 import preprocess as pre
 import feature_extraction as fe
 
 def main(argv):
 
-    genres = ['classical', 'past_decade']
+    genres = ['classical', 'past_century']
 
     # preprocess midi's if there is nothing in the preprocess_pickle folders
     for genre in genres:
@@ -73,6 +75,8 @@ def main(argv):
     # powerset of features
     p_set = list(itertools.chain.from_iterable(itertools.combinations(feature_names, r) for r in range(len(feature_names)+1)))
 
+    # p_set = [[], feature_names]
+
     results = []
     for feature_set in p_set[1:]:
         if not os.path.exists('feature_set_pickle/' + "_".join(feature_set) + '.p'):
@@ -86,29 +90,52 @@ def main(argv):
             feature_mat_t = map(lambda *a: list(a), *feature_mat)
 
             # get result
-            result = predict_genre(feature_mat_t, labels)
+            fone, accuracy, c_m = predict_genre(feature_mat_t, labels)
 
             # keep track of results internally
-            results.append((feature_set, result))
+            results.append((feature_set, (fone, accuracy, c_m)))
 
             # pickle the output
             # probably better to do this as a .txt file or something
-            pickle.dump(result, open("feature_set_pickle/" + "_".join(feature_set) + ".p", "wb"))
+            pickle.dump((fone, accuracy, c_m), open("feature_set_pickle/" + "_".join(feature_set) + ".p", "wb"))
 
-            print(" done. result: " + str(round(result, 2)))
+            print(" done.\nf1: " + str(round(fone, 4)) + "\nacc: " + str(round(accuracy, 4)) + "\ncm:\n" + str(c_m))
         else:
-            result = pickle.load(open("feature_set_pickle/" + "_".join(feature_set) + ".p", "rb"))
-            results.append((feature_set, result))
-            print(", ".join(feature_set) + " feature set is already scored. result: " + str(round(result, 2)))
+            (fone, accuracy, conf_m) = pickle.load(open("feature_set_pickle/" + "_".join(feature_set) + ".p", "rb"))
+            results.append((feature_set, (fone, accuracy, conf_m)))
+            print(", ".join(feature_set) + " feature set is already scored. result:\nf1: " + str(round(fone, 4)) + "\nacc: " + str(round(accuracy, 4)) + "\ncm:\n" + str(conf_m))
             continue
 
     # final output
     max_result = max(results, key=operator.itemgetter(1))
-    print(", ".join(max_result[0]) + " scored the highest, result: " + str(round(max_result[1],2)))
+    print(", ".join(max_result[0]) + " scored the highest, result: " + str(round(max_result[1][0], 4)))
 
-def predict_genre(X, Y):
-	scores = cross_val_score(svm.SVC(kernel='linear', C=1.0), X, Y, scoring='accuracy', cv=10)
-	return scores.mean()
+def predict_genre(X, y):
+    X = numpy.array(X)
+    y = numpy.array(y)
+
+    kf = KFold(len(y), n_folds=10, shuffle=True)
+    cm_sum = numpy.empty([2,2])
+
+    accuracies = []
+    fones = []
+    for train_index, test_index in kf:
+        clf = svm.SVC(kernel='linear', class_weight="balanced", C=3.0)
+
+        X_train, X_test = X[train_index], X[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+
+        clf.fit(X_train, y_train)
+
+        y_pred = clf.predict(X_test)
+
+        cm = confusion_matrix(y_test, y_pred)
+        cm_sum += cm
+
+        accuracies.append(accuracy_score(y_test, y_pred))
+        fones.append(f1_score(y_test, y_pred, average='weighted'))
+
+    return numpy.mean(fones), numpy.mean(accuracies), cm_sum
 
 if __name__ == "__main__":
     main(sys.argv)
