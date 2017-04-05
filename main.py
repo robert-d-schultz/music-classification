@@ -6,15 +6,10 @@ import glob
 import cPickle as pickle
 from sklearn.cross_validation import KFold
 from sklearn.metrics import confusion_matrix, accuracy_score, f1_score
-from sklearn import svm
-from sklearn import linear_model
-from sklearn import naive_bayes
-from sklearn import discriminant_analysis
-from sklearn import decomposition
+from sklearn import svm, linear_model, discriminant_analysis
 import itertools
 import operator
 import numpy
-import matplotlib.pyplot as plt
 
 import preprocess as pre
 import feature_extraction as fe
@@ -104,7 +99,6 @@ def main(argv):
                 results.append((model, feature_set, (fone, accuracy, c_m)))
 
                 # pickle the output
-                # probably better to do this as a .txt file or something
                 pickle.dump((fone, accuracy, c_m), open("feature_set_pickle/" + model + "/" + "_".join(feature_set) + ".p", "wb"))
 
                 print(" done.\nf1: " + str(round(fone, 4)) + "\nacc: " + str(round(accuracy, 4)) + "\ncm:\n" + str(c_m))
@@ -129,9 +123,9 @@ def predict_genre(model, X, y):
     fones = []
     for train_index, test_index in kf:
         if model == "svm":
-            clf = svm.LinearSVC(dual=False, penalty='l1', class_weight="balanced", C=10)
+            clf = svm.LinearSVC(dual=False, penalty='l1', class_weight="balanced", C=10) #C=10 determined experimentally
         elif model == "logistic regression":
-            clf = linear_model.LogisticRegression(penalty='l1', class_weight="balanced", C=100)
+            clf = linear_model.LogisticRegression(penalty='l1', class_weight="balanced", C=100) #C=100 determined experimentally
         elif model == "bayes":
             clf = naive_bayes.GaussianNB()
         elif model == "lda":
