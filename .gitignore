@@ -1,6 +1,5 @@
 # other
 data_raw/
-data/
 *.p
 *.mid
 *.kar

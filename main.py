@@ -133,7 +133,7 @@ def predict_genre(model, X, y):
         elif model == "logistic regression":
             clf = linear_model.LogisticRegression(penalty='l1', class_weight="balanced", C=100)
         elif model == "bayes":
-            clf = naive_bayes.MultinomialNB()
+            clf = naive_bayes.GaussianNB()
         elif model == "lda":
             clf = discriminant_analysis.LinearDiscriminantAnalysis(solver='lsqr', shrinkage='auto')
 
