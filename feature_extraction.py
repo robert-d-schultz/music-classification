@@ -7,7 +7,15 @@ import collections
 import numpy
 
 
-def bag_of_ngrams(n, m):
+# extraction only for training set
+def bag_of_ngrams(feature, m):
+
+	if feature == "unigram":
+		n = 1
+	if feature == "bigram":
+		n = 2
+	if feature == "trigram":
+		n = 3
 
 	song_chord_counts = []
 	song_ngram_counts = []
@@ -16,7 +24,7 @@ def bag_of_ngrams(n, m):
 	# build file list
 	filenames = []
 	for genre in ['classical', 'past_century']:
-		filenames.extend(glob.glob(os.path.join('./preprocess_pickle/' + genre + '/', '*.p')))
+		filenames.extend(glob.glob(os.path.join('./preprocess_pickle/training/' + genre + '/', '*.p')))
 
 	for filename in filenames:
 
@@ -48,15 +56,65 @@ def bag_of_ngrams(n, m):
 		counts = [song_ngram_count[ngram] for song_ngram_count in song_ngram_counts]
 		out.append([float(counts[i]) / song_chord_counts[i] for i in range(len(filenames))])
 
+	# pickle which ngrams were used (need this for the test set)
+	pickle.dump([ngram for ngram, _ in overall_ngram_sort[:m]], open("feature_pickle/" + feature + "_master.p", "wb"))
+
 	return out
 
+# extract for test set
+def bag_of_ngrams_test(feature):
+	# open the ngrams that need to be extracted
+	n = 1
+	ngram_master = pickle.load(open("feature_pickle/" + feature + "_master.p", "rb" ))
+	if feature == "unigram":
+		n = 1
+	if feature == "bigram":
+		n = 2
+	if feature == "trigram":
+		n = 3
 
-def avg_interval():
+	song_chord_counts = []
+	song_ngram_counts = []
 
 	# build file list
 	filenames = []
 	for genre in ['classical', 'past_century']:
-		filenames.extend(glob.glob(os.path.join('./preprocess_pickle/' + genre + '/', '*.p')))
+		filenames.extend(glob.glob(os.path.join('./preprocess_pickle/test/' + genre + '/', '*.p')))
+
+	for filename in filenames:
+
+		# open pickled array
+		data = pickle.load(open(filename, "rb" ))
+
+		# chord only
+		data = [a[1] for a in data]
+
+		# n-grams
+		data_ngrams = list(nltk.ngrams(data, n))
+
+		# add a new dictionary for the new song
+		song_ngram_counts.append(collections.defaultdict(lambda: 0))
+
+		# go through each ngram, adding to the per-song count
+		for ngram in data_ngrams:
+			song_ngram_counts[-1][ngram] += 1
+
+		# keep track of number of chords
+		song_chord_counts.append(len(data))
+
+	out = []
+	for ngram in ngram_master:
+		counts = [song_ngram_count[ngram] for song_ngram_count in song_ngram_counts]
+		out.append([float(counts[i]) / song_chord_counts[i] for i in range(len(filenames))])
+
+	return out
+
+def avg_interval(s):
+
+	# build file list
+	filenames = []
+	for genre in ['classical', 'past_century']:
+		filenames.extend(glob.glob(os.path.join('./preprocess_pickle/' + s + '/' + genre + '/', '*.p')))
 
 	avgs = []
 	stdevs = []
@@ -77,19 +135,28 @@ def avg_interval():
 	return [avgs, stdevs]
 
 
-def extract_feature(feature):
+def extract_feature(feature, s):
 	out = []
 	# unigrams
 	if feature == "unigram":
-		out = bag_of_ngrams(1, 119)
+		if s == "test":
+			out = bag_of_ngrams_test("unigram")
+		else:
+			out = bag_of_ngrams("unigram", 120) # 112 named chords + 7 notes + 1 rest
 	# bigrams
 	elif feature == "bigram":
-		out = bag_of_ngrams(2, 100)
+		if s == "test":
+			out = bag_of_ngrams_test("bigram")
+		else:
+			out = bag_of_ngrams("bigram", 100) # fairly arbitrary
 	# trigrams
 	elif feature == "trigram":
-		out = bag_of_ngrams(3, 500)
+		if s == "test":
+			out = bag_of_ngrams_test("trigram")
+		else:
+			out = bag_of_ngrams("trigram", 500) # more than bigrams because 120x more
 	# interval
 	elif feature == "interval":
-		out = avg_interval()
+		out = avg_interval(s)
 
 	return out

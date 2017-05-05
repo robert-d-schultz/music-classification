@@ -30,10 +30,10 @@ def preprocess(pat):
     carried_over = carry_over(mrg)
 
     # remove "silence" events
-    no_silence = [x for x in carried_over if len(x[1]) > 0]
+    #no_silence = [x for x in carried_over if len(x[1]) > 0]
 
     # pitch class (ignore octave)
-    no_oct = [(event[0], sorted([x[0] % 12 for x in event[1]])) for event in no_silence]
+    no_oct = [(event[0], sorted([x[0] % 12 for x in event[1]])) for event in carried_over]
 
     # keep unique only - assumes chords are sets of notes
     uniq = [(event[0], unique(event[1])) for event in no_oct]
@@ -55,7 +55,7 @@ def preprocess(pat):
             if key_sig.count(key_sig[0]) == len(key_sig):
                 key_sig = key_sig[0]
             else:
-                # fuck it, just use the first one
+                # f*ck it, just use the first one
                 key_sig = key_sig[0]
                 # raise ValueError('One of the files has two or more different key signatures and must be analyzed in multiple parts. Please let this not fire.')
 
@@ -146,9 +146,9 @@ def get_scale(key_sig):
     else:
         return [(n - key_sig[0] * 5) % 12 for n in [9,11,0,2,4,6,8]]
 
-# from the scale, return a list of 96 named chords
+# from the scale, return a list of 96 named chords (97 with rest)
 def get_named_chords(scale):
-    chords = [("note", [0]),
+    chords = [ ("note", [0]),
     ("major", [0,4,7]),
     ("minor", [0,3,7]),
     ("suspended", [0,5,7]),
@@ -170,10 +170,10 @@ def get_named_chords(scale):
     for note in scale:
         for chord in chords:
             # for specific chords
-            # new_string = note_lookup(note) + "_" + chord[0]
             new_string = str(scale.index(note)) + "_" + chord[0]
             new_chord = [(chord_note + note) % 12 for chord_note in chord[1]]
             named_chords.append((new_string, new_chord))
+    named_chords.append(("rest", []))
     return named_chords
 
 # from the note's number, get the note's name (string)
