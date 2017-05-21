@@ -8,7 +8,7 @@ import numpy
 
 
 # extraction only for training set
-def bag_of_ngrams(feature, m):
+def bag_of_ngrams(filenames, feature, m):
 
 	if feature == "unigram":
 		n = 1
@@ -20,11 +20,6 @@ def bag_of_ngrams(feature, m):
 	song_chord_counts = []
 	song_ngram_counts = []
 	overall_ngram_count = collections.defaultdict(lambda: 0)
-
-	# build file list
-	filenames = []
-	for genre in ['classical', 'past_century']:
-		filenames.extend(glob.glob(os.path.join('./preprocess_pickle/training/' + genre + '/', '*.p')))
 
 	for filename in filenames:
 
@@ -62,7 +57,7 @@ def bag_of_ngrams(feature, m):
 	return out
 
 # extract for test set
-def bag_of_ngrams_test(feature):
+def bag_of_ngrams_test(filenames, feature):
 	# open the ngrams that need to be extracted
 	n = 1
 	ngram_master = pickle.load(open("feature_pickle/" + feature + "_master.p", "rb" ))
@@ -75,11 +70,6 @@ def bag_of_ngrams_test(feature):
 
 	song_chord_counts = []
 	song_ngram_counts = []
-
-	# build file list
-	filenames = []
-	for genre in ['classical', 'past_century']:
-		filenames.extend(glob.glob(os.path.join('./preprocess_pickle/test/' + genre + '/', '*.p')))
 
 	for filename in filenames:
 
@@ -109,12 +99,7 @@ def bag_of_ngrams_test(feature):
 
 	return out
 
-def avg_interval(s):
-
-	# build file list
-	filenames = []
-	for genre in ['classical', 'past_century']:
-		filenames.extend(glob.glob(os.path.join('./preprocess_pickle/' + s + '/' + genre + '/', '*.p')))
+def avg_interval(filenames):
 
 	avgs = []
 	stdevs = []
@@ -135,28 +120,28 @@ def avg_interval(s):
 	return [avgs, stdevs]
 
 
-def extract_feature(feature, s):
+def extract_feature(filenames, feature, s):
 	out = []
 	# unigrams
 	if feature == "unigram":
 		if s == "test":
-			out = bag_of_ngrams_test("unigram")
+			out = bag_of_ngrams_test(filenames, "unigram")
 		else:
-			out = bag_of_ngrams("unigram", 120) # 112 named chords + 7 notes + 1 rest
+			out = bag_of_ngrams(filenames, "unigram", 120) # 112 named chords + 7 notes + 1 rest
 	# bigrams
 	elif feature == "bigram":
 		if s == "test":
-			out = bag_of_ngrams_test("bigram")
+			out = bag_of_ngrams_test(filenames, "bigram")
 		else:
-			out = bag_of_ngrams("bigram", 100) # fairly arbitrary
+			out = bag_of_ngrams(filenames, "bigram", 100) # fairly arbitrary
 	# trigrams
 	elif feature == "trigram":
 		if s == "test":
-			out = bag_of_ngrams_test("trigram")
+			out = bag_of_ngrams_test(filenames, "trigram")
 		else:
-			out = bag_of_ngrams("trigram", 500) # more than bigrams because 120x more
+			out = bag_of_ngrams(filenames, "trigram", 500) # more than bigrams because 120x more
 	# interval
 	elif feature == "interval":
-		out = avg_interval(s)
+		out = avg_interval(filenames)
 
 	return out

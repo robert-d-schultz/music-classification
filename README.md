@@ -6,11 +6,11 @@ By Robert Schultz
 CUNY Graduate Center
 
 
-##Running
+## Running
 * Run in python2
 * .mid files go in ./data_unseparated/classical and ./data_unseparated/past_century
 
-##Dependencies
+## Dependencies
 * python-midi (https://github.com/vishnubob/python-midi)
 * natural language toolkit
 * sklearn
