@@ -18,39 +18,10 @@ import feature_extraction as fe
 
 def main(argv):
 
-    genres = ['classical', 'past_century']
+    genres = ['50s', '60s', '70s', '80s', '90s'] # 'country', 'past_century'
     feature_names = ['unigram', 'bigram', 'trigram', 'interval']
     # powerset of features (2^4 = 16)
     p_set = list(itertools.chain.from_iterable(itertools.combinations(feature_names, r) for r in range(len(feature_names)+1)))
-
-
-    '''# separate data_unseparated into training and test sets
-    if os.listdir('data/test/classical') == ['dummy']:
-        for genre in genres:
-
-            # build list of filenames
-            filenames = []
-            for ext in ['.mid', '.kar']:
-                for f in os.listdir('data_unseparated/' + genre):
-                    if f.endswith(ext):
-                        filenames.append(os.path.join('data_unseparated/' + genre + '/', f))
-
-            # shuffle filenames
-            random.shuffle(filenames)
-
-            # take 10% for test data
-            test = filenames[int((len(filenames)+1)*.90):]
-
-            # copy into /data/ folder
-            for f in test:
-                shutil.copy2(f, 'data/test/' + genre + '/')
-
-            # take the rest for training data
-            training = filenames[:int((len(filenames)+1)*.90)]
-
-            # copy into /data/ folder
-            for f in training:
-                shutil.copy2(f, 'data/training/' + genre + '/')'''
 
 
     # preprocess all midi's
@@ -190,7 +161,7 @@ def main(argv):
     for t in results_t:
         y_ts = []
         y_ps = []
-        conf_m = numpy.zeros((2, 2))
+        conf_m = numpy.zeros((len(genres), len(genres)))
         for model, feature_set, (y_t, y_p, c_m) in t:
             y_ts.extend(y_t)
             y_ps.extend(y_p)
@@ -200,16 +171,8 @@ def main(argv):
         f1 = f1_score(y_ts, y_ps, average='weighted')
         out.append((t[0][0], t[0][1], (acc, f1, conf_m)))
 
-
-
-    #out_file = open('output.txt', 'wb')
     for exp in out:
         print(exp)
-        #out_file.write(exp)
-        #out_file.write('\n')
-
-
-
 
 def train_model(model, X, y):
     if model == "svm":
@@ -225,6 +188,7 @@ def train_model(model, X, y):
 
     return clf
 
+
 def predict_genre(clf, X_test, y_test):
 
     y_pred = clf.predict(X_test)
@@ -234,38 +198,6 @@ def predict_genre(clf, X_test, y_test):
 
     return y_test, y_pred, cm
 
-'''def predict_genre(model, X, y):
-    X = numpy.array(X)
-    y = numpy.array(y)
-
-    kf = KFold(len(y), n_folds=10, shuffle=True)
-    cm_sum = numpy.empty([2,2])
-
-    accuracies = []
-    fones = []
-    for train_index, test_index in kf:
-        if model == "svm":
-            clf = svm.LinearSVC(dual=False, penalty='l1', class_weight="balanced", C=10) #C=10 determined experimentally
-        elif model == "logistic regression":
-            clf = linear_model.LogisticRegression(penalty='l1', class_weight="balanced", C=100) #C=100 determined experimentally
-        elif model == "bayes":
-            clf = naive_bayes.GaussianNB()
-        elif model == "lda":
-            clf = discriminant_analysis.LinearDiscriminantAnalysis(solver='lsqr', shrinkage='auto')
-
-        X_train, X_test = X[train_index], X[test_index]
-        y_train, y_test = y[train_index], y[test_index]
-
-        clf.fit(X_train, y_train)
-
-        y_pred = clf.predict(X_test)
-
-        cm = confusion_matrix(y_test, y_pred)
-        cm_sum += cm
-
-        accuracies.append(accuracy_score(y_test, y_pred))
-        fones.append(f1_score(y_test, y_pred, average='weighted'))
-    return numpy.mean(fones), numpy.mean(accuracies), cm_sum'''
 
 if __name__ == "__main__":
     main(sys.argv)
