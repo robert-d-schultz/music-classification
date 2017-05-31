@@ -8,7 +8,7 @@ CUNY Graduate Center
 
 ## Running
 * Run in python2
-* .mid files go in ./data_unseparated/classical and ./data_unseparated/past_century
+* .mid files go in ./data/*
 
 ## Dependencies
 * python-midi (https://github.com/vishnubob/python-midi)
